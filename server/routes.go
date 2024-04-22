@@ -1076,7 +1076,7 @@ func (s *Server) GenerateRoutes() http.Handler {
 	r.HEAD("/api/blobs/:digest", HeadBlobHandler)
 
 	// Compatibility endpoints
-	r.POST("/v1/chat/completions", openai.Middleware(), ChatHandler)
+	r.POST("/llmapi/v1/chat/completions", openai.Middleware(), ChatHandler)
 
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
 		r.Handle(method, "/", func(c *gin.Context) {
@@ -1086,6 +1086,26 @@ func (s *Server) GenerateRoutes() http.Handler {
 		r.Handle(method, "/api/tags", ListModelsHandler)
 		r.Handle(method, "/api/version", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"version": version.Version})
+		})
+                data := []map[string]interface{}{
+			{
+				"id":          "LLAMA3-8B",
+				"object":      "model",
+				"owned_by":    "me",
+				"permissions": []interface{}{},
+				"title":       "8b-instruct-q5_K_M.gguf [71d2106809]",
+				"model_name":  "8b-instruct-q5_K_M",
+				"hash":        "71d2106809",
+				"sha256":      "71d210680951542a6778115ba7cfaacbc2762a572bef4488ae9ea69414be8d55",
+				"filename":    "/llama.cpp/8b-instruct-q5_K_M.gguf",
+				"config":      map[string]interface{}{},
+			},
+		}
+		r.Handle(method, "/llmapi/v1/models", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+                                                       "object": "list",
+                                                       "data": data,
+			})
 		})
 	}
 
@@ -1247,6 +1267,9 @@ func ChatHandler(c *gin.Context) {
 	case err != nil:
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if req.Model == "" {
+		req.Model = "llama3:8b-instruct-q5_K_M"
 	}
 
 	// validate the request
